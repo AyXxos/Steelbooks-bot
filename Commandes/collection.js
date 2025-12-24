@@ -1,44 +1,64 @@
-const fs = require("fs");
-const path = require("path");
 const Discord = require("discord.js");
+const { google } = require("googleapis");
+const path = require("path");
+const fs = require("fs");
 
-const COLLECTION_FILE = path.join(__dirname, "../data/collections/collections.json");
 const EMOJI_FILE = path.join(__dirname, "../data/emojis.json");
-function loadCollections() {
-    if (!fs.existsSync(COLLECTION_FILE)) return {};
-    try {
-        const data = fs.readFileSync(COLLECTION_FILE, "utf-8");
-        return JSON.parse(data);
-    } catch (err) {
-        console.error("Erreur lors du chargement des collections :", err);
-        return {};
-    }
-}
+
+const auth = new google.auth.GoogleAuth({
+    keyFile: "./credentials.json",
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+const sheets = google.sheets({ version: "v4", auth });
+
 function loadEmojis() {
-    if (!fs.existsSync(EMOJI_FILE)) return {};
+    if (!fs.existsSync(EMOJI_FILE)) return [];
     try {
         const data = fs.readFileSync(EMOJI_FILE, "utf-8");
         return JSON.parse(data);
     } catch (err) {
-        console.error("Erreur lors du chargement des collections :", err);
-        return {};
+        console.error("Erreur lors du chargement des emojis :", err);
+        return [];
     }
 }
+
 function randint(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
 function randomColor() {
-    const num = randint(1, 32);
-    const couleurs = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
-    let randomColor = '#'
-    for (i = 0; i < 6; i++) {
-        randomColor += couleurs[randint(0, 15)];
-    }
-    return randomColor;
+    const couleurs = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+    let color = '#';
+    for (let i = 0; i < 6; i++) color += couleurs[randint(0, 15)];
+    return color;
 }
+
 function randomEmoji(){
-    emojis = loadEmojis();
+    const emojis = loadEmojis();
     return emojis[randint(0, emojis.length - 1)];
+}
+
+
+async function getUserData(userId) {
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: "1vYup3J8eCphhY48HjPWI1LK7YmLbfRnbDkrr08TF7G4",
+        range: "'Feuille 1'!A:G",
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return rows
+        .filter(row => row[0] === userId)
+        .map(row => ({
+            id: row[0],
+            pseudo: row[1],
+            nom: row[2],
+            prix: row[3],
+            realisateur: row[4],
+            etat: row[5],
+            provenance: row[6],
+        }));
 }
 
 module.exports = {
@@ -53,32 +73,24 @@ module.exports = {
             name: "membre",
             description: "Voir la collection d’un membre",
             required: true,
-            autocomplete: false,
         }
     ],
 
     async run(bot, message, args) {
-        const logBotChannelId = '1394058036754255932'
+        const logBotChannelId = '1394058036754255932';
         const logChannel = bot.channels.cache.get(logBotChannelId);
-        const id = message.user.id;
-        const usr = bot.users.cache.get(id);
-        logChannel.send("Commande collection utilisée par " + usr.tag);
+        logChannel?.send(`Commande collection utilisée par ${message.user.tag}`);
+
         const user = await args.getUser("membre");
-        if (!user) {
-            return message.reply("<:peepoboxing:1391691687385895045> Tu dois spécifier un membre pour voir sa collection !");
-        }
+        if (!user) return message.reply("❌ Tu dois spécifier un membre !");
 
-        const collections = loadCollections();
-        const userId = user.id;
-        const userCollection = collections[userId] || [];
-
+        const userCollection = await getUserData(user.id);
         if (userCollection.length === 0) {
-            return message.reply(`<:peppoishrug:1391693146966065213> ${user.username} n’a pas encore ajouté de steelbook à sa collection.`);
+            return message.reply(`📦 ${user.username} n’a pas encore ajouté de steelbook à sa collection.`);
         }
 
         const itemsPerPage = 10;
         const totalPages = Math.ceil(userCollection.length / itemsPerPage);
-
         let currentPage = 0;
 
         const generateEmbed = (page) => {
@@ -88,9 +100,9 @@ module.exports = {
 
             return new Discord.EmbedBuilder()
                 .setTitle(`📀 Collection de ${user.username} 📀`)
-                .setDescription(currentItems.map((s, i) => {
-                    const emoji = randomEmoji(); 
-                    return `${emoji} \`${start + i + 1}.\` ${s}`;
+                .setDescription(currentItems.map((item, i) => {
+                    const emoji = randomEmoji();
+                    return `${emoji} \`${start + i + 1}.\` ${item.nom} - Réalisateur: ${item.realisateur || "N/A"}`;
                 }).join("\n\n"))
                 .setFooter({ text: `Page ${page + 1} / ${totalPages}` })
                 .setColor(randomColor());
