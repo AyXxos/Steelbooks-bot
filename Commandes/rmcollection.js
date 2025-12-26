@@ -1,51 +1,7 @@
-const fs = require("fs");
-const path = require("path");
 const Discord = require("discord.js");
 const { google } = require("googleapis");
 
-const COLLECTION_FILE = path.join(__dirname, "../data/collections/collections.json");
-
-/* =======================
-   JSON LOCAL
-======================= */
-
-function loadCollections() {
-    if (!fs.existsSync(COLLECTION_FILE)) return {};
-    try {
-        return JSON.parse(fs.readFileSync(COLLECTION_FILE, "utf-8"));
-    } catch (err) {
-        console.error("Erreur chargement collections :", err);
-        return {};
-    }
-}
-
-function saveCollections(collections) {
-    fs.writeFileSync(
-        COLLECTION_FILE,
-        JSON.stringify(collections, null, 2),
-        "utf-8"
-    );
-}
-
-function removeFromJson(userId, steelbookName) {
-    const collections = loadCollections();
-
-    if (!collections[userId]) return;
-
-    collections[userId] = collections[userId].filter(
-        name => name !== steelbookName
-    );
-
-    if (collections[userId].length === 0) {
-        delete collections[userId];
-    }
-
-    saveCollections(collections);
-}
-
-/* =======================
-   GOOGLE SHEETS
-======================= */
+/* ===================== GOOGLE SHEETS ===================== */
 
 const auth = new google.auth.GoogleAuth({
     keyFile: "./credentials.json",
@@ -53,41 +9,47 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const sheets = google.sheets({ version: "v4", auth });
-
 const SPREADSHEET_ID = "1vYup3J8eCphhY48HjPWI1LK7YmLbfRnbDkrr08TF7G4";
-const SHEET_NAME = "Feuille 1";
-const SHEET_ID = 0; 
 
-async function findRowIndex(userId, numero) {
-    const res = await sheets.spreadsheets.values.get({
+/* ===================== HELPERS ===================== */
+
+async function getSheetMeta(sheetName) {
+    const meta = await sheets.spreadsheets.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!A:H`,
     });
 
-    const rows = res.data.values || [];
+    return meta.data.sheets.find(
+        s => s.properties.title === sheetName
+    );
+}
 
-    for (let i = 1; i < rows.length; i++) {
-        if (
-            rows[i][0] === userId &&
-            Number(rows[i][2]) === numero
-        ) {
-            return i;
+async function findRow(userId, numero) {
+    const sheetName = `user_${userId}`;
+
+    try {
+        const res = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `'${sheetName}'!A1:H`,
+        });
+
+        const rows = res.data.values || [];
+
+        for (let i = 0; i < rows.length; i++) {
+            if (Number(rows[i][2]) === numero) {
+                return {
+                    rowIndex: i + 1, // ligne réelle dans Sheets
+                    row: rows[i],
+                };
+            }
         }
+
+        return null;
+    } catch {
+        return null;
     }
-
-    return -1;
 }
 
-async function getSteelbookName(rowIndex) {
-    const res = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!A${rowIndex + 1}:H${rowIndex + 1}`,
-    });
-
-    return res.data.values?.[0]?.[3] || null;
-}
-
-async function deleteRow(rowIndex) {
+async function deleteRow(sheetId, rowIndex) {
     await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
         requestBody: {
@@ -95,10 +57,10 @@ async function deleteRow(rowIndex) {
                 {
                     deleteDimension: {
                         range: {
-                            sheetId: SHEET_ID,
+                            sheetId,
                             dimension: "ROWS",
-                            startIndex: rowIndex,
-                            endIndex: rowIndex + 1,
+                            startIndex: rowIndex - 1,
+                            endIndex: rowIndex,
                         },
                     },
                 },
@@ -107,9 +69,33 @@ async function deleteRow(rowIndex) {
     });
 }
 
-/* =======================
-   COMMANDE DISCORD
-======================= */
+async function renumberSheet(userId) {
+    const sheetName = `user_${userId}`;
+
+    const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `'${sheetName}'!A1:H`,
+    });
+
+    const rows = res.data.values || [];
+    if (rows.length === 0) return;
+
+    const updated = rows.map((row, index) => {
+        row[2] = index + 1; // colonne NUMÉRO
+        return row;
+    });
+
+    await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `'${sheetName}'!A1:H${rows.length}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+            values: updated,
+        },
+    });
+}
+
+/* ===================== COMMAND ===================== */
 
 module.exports = {
     name: "rmcollection",
@@ -123,39 +109,47 @@ module.exports = {
             name: "numero",
             description: "Numéro du steelbook à supprimer",
             required: true,
-            autocomplete: false,
+            autocomplete: true,
         },
     ],
 
-    async run(bot, message, args) {
+    async run(bot, interaction, args) {
         const logBotChannelId = "1394058036754255932";
         const logChannel = bot.channels.cache.get(logBotChannelId);
-
-        const userId = message.user.id;
-        const numero = args.getInteger("numero");
-
+        const id = interaction.user.id;
+        const user = bot.users.cache.get(id);
         logChannel?.send(
-            `Commande rmcollection utilisée par ${message.user.tag}`
+            `Commande ping utilisée par ${user.tag}`
         );
 
-        const rowIndex = await findRowIndex(userId, numero);
+        await interaction.deferReply();
 
-        if (rowIndex === -1) {
-            return message.reply(
+        const userId = interaction.user.id;
+        const numero = args.getInteger("numero");
+        const sheetName = `user_${userId}`;
+
+        const sheet = await getSheetMeta(sheetName);
+        if (!sheet) {
+            return interaction.editReply(
+                "❌ Tu n’as encore aucun steelbook."
+            );
+        }
+
+        const found = await findRow(userId, numero);
+        if (!found) {
+            return interaction.editReply(
                 "❌ Aucun steelbook trouvé avec ce numéro."
             );
         }
 
-        const steelbookName = await getSteelbookName(rowIndex);
+        const { rowIndex, row } = found;
+        const steelbookName = row[3];
 
-        await deleteRow(rowIndex);
+        await deleteRow(sheet.properties.sheetId, rowIndex);
+        await renumberSheet(userId);
 
-        if (steelbookName) {
-            removeFromJson(userId, steelbookName);
-        }
-
-        await message.reply(
-            `🗑️ **${steelbookName ?? "Steelbook"}** a été supprimé de ta collection.`
+        await interaction.editReply(
+            `🗑️ **${steelbookName}** a été supprimé de ta collection.`
         );
     },
 };

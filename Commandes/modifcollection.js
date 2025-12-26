@@ -1,49 +1,8 @@
-const fs = require("fs");
-const path = require("path");
 const Discord = require("discord.js");
 const tools = require("../tools.js");
 const { google } = require("googleapis");
 
-const COLLECTION_FILE = path.join(__dirname, "../data/collections/collections.json");
-
-/* =======================
-   JSON LOCAL
-======================= */
-
-function loadCollections() {
-    if (!fs.existsSync(COLLECTION_FILE)) return {};
-    try {
-        return JSON.parse(fs.readFileSync(COLLECTION_FILE, "utf-8"));
-    } catch (err) {
-        console.error("Erreur chargement collections :", err);
-        return {};
-    }
-}
-
-function saveCollections(collections) {
-    fs.writeFileSync(
-        COLLECTION_FILE,
-        JSON.stringify(collections, null, 2),
-        "utf-8"
-    );
-}
-
-function updateJson(userId, oldTitle, newTitle) {
-    if (!newTitle || oldTitle === newTitle) return;
-
-    const collections = loadCollections();
-    if (!collections[userId]) return;
-
-    const index = collections[userId].indexOf(oldTitle);
-    if (index !== -1) {
-        collections[userId][index] = newTitle;
-        saveCollections(collections);
-    }
-}
-
-/* =======================
-   GOOGLE SHEETS
-======================= */
+/* ===================== GOOGLE SHEETS ===================== */
 
 const auth = new google.auth.GoogleAuth({
     keyFile: "./credentials.json",
@@ -51,34 +10,42 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const sheets = google.sheets({ version: "v4", auth });
-
 const SPREADSHEET_ID = "1vYup3J8eCphhY48HjPWI1LK7YmLbfRnbDkrr08TF7G4";
-const SHEET_NAME = "Feuille 1";
+
+/* ===================== HELPERS ===================== */
 
 async function findRowIndex(userId, numero) {
-    const res = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!A:H`,
-    });
+    const sheetName = `user_${userId}`;
 
-    const rows = res.data.values || [];
+    try {
+        const res = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `'${sheetName}'!A1:H`,
+        });
 
-    for (let i = 1; i < rows.length; i++) {
-        if (
-            rows[i][0] === userId &&
-            Number(rows[i][2]) === numero
-        ) {
-            return { rowIndex: i, row: rows[i] };
+        const rows = res.data.values || [];
+
+        for (let i = 0; i < rows.length; i++) {
+            if (Number(rows[i][2]) === numero) {
+                return {
+                    rowIndex: i + 1, // +1 car A1
+                    row: rows[i],
+                };
+            }
         }
-    }
 
-    return null;
+        return null;
+    } catch {
+        return null;
+    }
 }
 
-async function updateRow(rowIndex, values) {
+async function updateRow(userId, rowIndex, values) {
+    const sheetName = `user_${userId}`;
+
     await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!A${rowIndex + 1}:H${rowIndex + 1}`,
+        range: `'${sheetName}'!A${rowIndex}:H${rowIndex}`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
             values: [values],
@@ -86,9 +53,7 @@ async function updateRow(rowIndex, values) {
     });
 }
 
-/* =======================
-   COMMANDE DISCORD
-======================= */
+/* ===================== COMMAND ===================== */
 
 module.exports = {
     name: "modifcollection",
@@ -100,7 +65,7 @@ module.exports = {
         {
             type: "integer",
             name: "nom",
-            description: "Nom du steelbook à modifier",
+            description: "Numéro du steelbook à modifier",
             required: true,
             autocomplete: true,
         },
@@ -130,7 +95,7 @@ module.exports = {
             name: "etat",
             description: "Nouvel état",
             required: false,
-            autocomplete: false,
+            autocomplete: true,
         },
         {
             type: "string",
@@ -141,25 +106,28 @@ module.exports = {
         },
     ],
 
-    async run(bot, message, args) {
+    async run(bot, interaction, args) {
         const logBotChannelId = "1394058036754255932";
         const logChannel = bot.channels.cache.get(logBotChannelId);
-
-        const userId = message.user.id;
-        const numero = args.getInteger("nom");
-
+        const id = interaction.user.id;
+        const user = bot.users.cache.get(id);
         logChannel?.send(
-            `Commande modifcollection utilisée par ${message.user.tag}`
+            `Commande ping utilisée par ${user.tag}`
         );
+
+        const userId = interaction.user.id;
+        const numero = args.getInteger("nom");
 
         const found = await findRowIndex(userId, numero);
 
         if (!found) {
-            return message.reply("❌ Aucun steelbook trouvé avec ce numéro.");
+            return interaction.reply({
+                content: "❌ Aucun steelbook trouvé avec ce numéro.",
+                ephemeral: true,
+            });
         }
 
         const { rowIndex, row } = found;
-
         const newRow = [...row];
 
         const newTitle = args.getString("titre");
@@ -169,24 +137,26 @@ module.exports = {
         const newProv = args.getString("provenance");
 
         if (newTitle) newRow[3] = newTitle;
+
         if (newPrix !== null) {
             if (newPrix < 0) {
-                return message.reply("❌ Le prix ne peut pas être négatif.");
+                return interaction.reply({
+                    content: "❌ Le prix ne peut pas être négatif.",
+                    ephemeral: true,
+                });
             }
             newRow[4] = newPrix;
         }
+
         if (newReal) newRow[5] = newReal;
         if (newEtat) newRow[6] = newEtat;
         if (newProv) newRow[7] = newProv;
 
-        await updateRow(rowIndex, newRow);
+        await updateRow(userId, rowIndex, newRow);
 
-        updateJson(userId, row[3], newTitle);
-        
-        const randomEmoji = tools.randomEmoji();
-        const oldTitle = row[3];
-        await message.reply(
-            `${randomEmoji} **${oldTitle}** a bien été modifié !`
+        const emoji = tools.randomEmoji();
+        await interaction.reply(
+            `${emoji} **${row[3]}** a bien été modifié !`
         );
     },
 };

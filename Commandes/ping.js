@@ -9,11 +9,13 @@ module.exports = {
     category: "Info | bot",
 
     async run(bot, message, args) {
-        const logBotChannelId = '1394058036754255932'
+        const logBotChannelId = "1394058036754255932";
         const logChannel = bot.channels.cache.get(logBotChannelId);
         const id = message.user.id;
         const user = bot.users.cache.get(id);
-        logChannel.send("Commande ping utilisée par " + user.tag);
+        logChannel?.send(
+            `Commande ping utilisée par ${user.tag}`
+        );
         await message.reply(`<a:peepodj:1391693167904161892> Le bot ${bot.user.tag} a un ping de ${bot.ws.ping} ms`)
     }
 }

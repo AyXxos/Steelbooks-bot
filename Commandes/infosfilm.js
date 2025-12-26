@@ -21,8 +21,13 @@ module.exports = {
   ],
 
     async run(bot, message, args) {
-        const logBotChannelId = '1394058036754255932';
+        const logBotChannelId = "1394058036754255932";
         const logChannel = bot.channels.cache.get(logBotChannelId);
+        const id = message.user.id;
+        const user = bot.users.cache.get(id);
+        logChannel?.send(
+            `Commande ping utilisée par ${user.tag}`
+        );
 
         const filmTitle = args.getString("film");
         if (!filmTitle) {
@@ -81,11 +86,7 @@ module.exports = {
 
             await message.reply({ embeds: [embed] });
 
-            // Log de l'utilisation
-            const user = bot.users.cache.get(message.user?.id || message.author?.id);
-            if (logChannel && user) {
-                logChannel.send(`🎥 Commande \`infosfilm\` utilisée par **${user.tag}** pour **${filmTitle}**`);
-            }
+            
 
         } catch (error) {
             console.error(error);
