@@ -1,4 +1,7 @@
 const fs = require("fs");
+const path = require("path");
+
+const EMOJI_FILE = path.join(__dirname, "./data/emojis.json");
 
 function loadEmojis() {
     if (!fs.existsSync(EMOJI_FILE)) return {};

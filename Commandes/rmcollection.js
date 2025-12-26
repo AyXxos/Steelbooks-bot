@@ -123,6 +123,7 @@ module.exports = {
             name: "numero",
             description: "Numéro du steelbook à supprimer",
             required: true,
+            autocomplete: false,
         },
     ],
 
