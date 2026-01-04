@@ -50,7 +50,8 @@ const getZavvi = async () => {
         image,
         price,
         status,
-        date : dateFormatted 
+        date : dateFormatted,
+        timestamp: now.getTime()
       });
     });
 

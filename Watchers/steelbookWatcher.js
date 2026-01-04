@@ -45,7 +45,8 @@ const getSteelbook = async () => {
         link,
         image,
         status,
-        date : dateFormatted 
+        date : dateFormatted,
+        timestamp: now.getTime()
       });
     });
 

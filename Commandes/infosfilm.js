@@ -26,7 +26,7 @@ module.exports = {
         const id = message.user.id;
         const user = bot.users.cache.get(id);
         logChannel?.send(
-            `Commande ping utilisée par ${user.tag}`
+            `Commande infofilm utilisée par ${user.tag}`
         );
 
         const filmTitle = args.getString("film");

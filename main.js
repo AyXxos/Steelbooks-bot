@@ -14,6 +14,7 @@ const steelbookProWatcher = require("./Watchers/steelbookWatcher.js");
 const zavviWatcherFRPreOrder = require("./Watchers/zavviWatcherFrPreOrder.js");
 const escWatcherPreOrder = require("./Watchers/unused/escWatcherPreOrder.js");
 const chocoWatcher = require("./Watchers/chocoWatcher.js");
+const cleanOldCacheEntries = require("./tools/cleanOldCacheEntries.js");
 
 
 bot.login(config.token);
@@ -76,6 +77,8 @@ bot.on("ready", async () => {
   await zavviWatcherFRPreOrder(bot);
   // Lancer le watcher pour Choco
   await chocoWatcher(bot);
+  // Nettoyage des caches au démarrage
+  await cleanOldCacheEntries(bot);
   // Puis répéter toutes les heures
   setInterval(() => {
     const logBotChannelId = '1394058036754255932'
@@ -91,6 +94,7 @@ bot.on("ready", async () => {
     steelbookProWatcher(bot);
     zavviWatcherFRPreOrder(bot);
     chocoWatcher(bot);
+    cleanOldCacheEntries(bot); // Nettoyage périodique
   }, 1000 * 60 * 30); // Toutes les 1/2h
 });
 

@@ -25,7 +25,7 @@ module.exports = {
         const id = interaction.user.id;
         const user = bot.users.cache.get(id);
         logChannel?.send(
-            `Commande ping utilisée par ${user.tag}`
+            `Commande macollec utilisée par ${user.tag}`
         );
 
         await interaction.deferReply({ ephemeral: true });

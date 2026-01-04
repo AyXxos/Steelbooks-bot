@@ -112,7 +112,7 @@ module.exports = {
         const id = interaction.user.id;
         const user = bot.users.cache.get(id);
         logChannel?.send(
-            `Commande ping utilisée par ${user.tag}`
+            `Commande modifcollection utilisée par ${user.tag}`
         );
 
         const userId = interaction.user.id;

@@ -79,7 +79,8 @@ const getAmazon = async () => {
         price : price,
         status : status,
         hasReviews : hasReviews,
-        date : dateFormatted 
+        date : dateFormatted,
+        timestamp: now.getTime()
       });
       
     })
@@ -95,7 +96,7 @@ const getAmazon = async () => {
     }
 
     const newSteelbooks = steelbooks.filter(
-        (sb) => !cached.some((old) => old.image === sb.image && old.title.toLowerCase().includes(sb.title.toLowerCase()))
+        (sb) => !cached.some((old) => old.link === sb.link)
     );
 
 

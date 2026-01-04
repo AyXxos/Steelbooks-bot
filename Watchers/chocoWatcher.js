@@ -62,7 +62,8 @@ const getChoco = async () => {
         image : image,
         price : priceFinal,
         status : status,
-        date : dateFormatted 
+        date : dateFormatted,
+        timestamp: now.getTime()
       });
       });
       let cached = [];
@@ -77,7 +78,7 @@ const getChoco = async () => {
         }
     
         const newSteelbooks = steelbooks.filter(
-            (sb) => !cached.some((old) => old.image === sb.image && old.title.toLowerCase().includes(sb.title.toLowerCase()))
+            (sb) => !cached.some((old) => old.link === sb.link)
         );
     
     

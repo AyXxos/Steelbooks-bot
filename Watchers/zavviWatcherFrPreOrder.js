@@ -47,7 +47,8 @@ const getZavviPreorder = async () => {
         image,
         price,
         status,
-        date : dateFormatted 
+        date : dateFormatted,
+        timestamp: now.getTime()
       });
     });
 
