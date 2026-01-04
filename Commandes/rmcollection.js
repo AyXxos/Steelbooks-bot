@@ -29,13 +29,13 @@ async function findRow(userId, numero) {
     try {
         const res = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `'${sheetName}'!A1:H`,
+            range: `'${sheetName}'!A1:F`,
         });
 
         const rows = res.data.values || [];
 
         for (let i = 0; i < rows.length; i++) {
-            if (Number(rows[i][2]) === numero) {
+            if (Number(rows[i][0]) === numero) {
                 return {
                     rowIndex: i + 1, // ligne réelle dans Sheets
                     row: rows[i],
@@ -74,20 +74,20 @@ async function renumberSheet(userId) {
 
     const res = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A1:H`,
+        range: `'${sheetName}'!A1:F`,
     });
 
     const rows = res.data.values || [];
     if (rows.length === 0) return;
 
     const updated = rows.map((row, index) => {
-        row[2] = index + 1; // colonne NUMÉRO
+        row[0] = index + 1; // colonne NUMÉRO
         return row;
     });
 
     await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A1:H${rows.length}`,
+        range: `'${sheetName}'!A1:F${rows.length}`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
             values: updated,
@@ -143,7 +143,7 @@ module.exports = {
         }
 
         const { rowIndex, row } = found;
-        const steelbookName = row[3];
+        const steelbookName = row[1];
 
         await deleteRow(sheet.properties.sheetId, rowIndex);
         await renumberSheet(userId);

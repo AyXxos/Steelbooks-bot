@@ -20,20 +20,18 @@ async function getUserData(userId) {
     try {
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `'${sheetName}'!A1:H`,
+            range: `'${sheetName}'!A1:F`,
         });
 
         const rows = response.data.values || [];
 
         return rows.map(row => ({
-            id: row[0],
-            pseudo: row[1],
-            numero: row[2],
-            nom: row[3],
-            prix: row[4],
-            realisateur: row[5],
-            etat: row[6],
-            provenance: row[7],
+            numero: row[0],
+            nom: row[1],
+            realisateur: row[2],
+            etat: row[3],
+            provenance: row[4],
+            prix: row[5],
         }));
     } catch (err) {
         // Feuille inexistante = aucune collection

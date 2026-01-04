@@ -50,14 +50,14 @@ module.exports = async (bot, interaction) => {
         try {
           const res = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `'${sheetName}'!A1:H`,
+            range: `'${sheetName}'!A1:F`,
           });
 
           const rows = res.data.values || [];
 
           const choices = rows
-            .filter(row => row[3]) // titre existe
-            .map(row => ({ name: `${row[2]} — ${row[3]}`, value: Number(row[2]) }))
+            .filter(row => row[1]) // titre existe
+            .map(row => ({ name: `${row[0]} — ${row[1]}`, value: Number(row[0]) }))
             .filter(choice => choice.name.toLowerCase().includes(entry.toLowerCase()))
             .slice(0, 25);
 

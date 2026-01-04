@@ -20,13 +20,13 @@ async function findRowIndex(userId, numero) {
     try {
         const res = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `'${sheetName}'!A1:H`,
+            range: `'${sheetName}'!A1:F`,
         });
 
         const rows = res.data.values || [];
 
         for (let i = 0; i < rows.length; i++) {
-            if (Number(rows[i][2]) === numero) {
+            if (Number(rows[i][0]) === numero) {
                 return {
                     rowIndex: i + 1, // +1 car A1
                     row: rows[i],
@@ -45,7 +45,7 @@ async function updateRow(userId, rowIndex, values) {
 
     await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A${rowIndex}:H${rowIndex}`,
+        range: `'${sheetName}'!A${rowIndex}:F${rowIndex}`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
             values: [values],
@@ -136,7 +136,7 @@ module.exports = {
         const newEtat = args.getString("etat");
         const newProv = args.getString("provenance");
 
-        if (newTitle) newRow[3] = newTitle;
+        if (newTitle) newRow[1] = newTitle;
 
         if (newPrix !== null) {
             if (newPrix < 0) {
@@ -145,18 +145,18 @@ module.exports = {
                     ephemeral: true,
                 });
             }
-            newRow[4] = newPrix;
+            newRow[5] = newPrix;
         }
 
-        if (newReal) newRow[5] = newReal;
-        if (newEtat) newRow[6] = newEtat;
-        if (newProv) newRow[7] = newProv;
+        if (newReal) newRow[2] = newReal;
+        if (newEtat) newRow[3] = newEtat;
+        if (newProv) newRow[4] = newProv;
 
         await updateRow(userId, rowIndex, newRow);
 
         const emoji = tools.randomEmoji();
         await interaction.reply(
-            `${emoji} **${row[3]}** a bien été modifié !`
+            `${emoji} **${row[1]}** a bien été modifié !`
         );
     },
 };

@@ -62,7 +62,7 @@ async function getOrCreateUserSheet(sheetName) {
 async function getNextNumero(sheetName) {
     const res = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!C1:C`,
+        range: `'${sheetName}'!A1:A`,
     });
 
     const rows = res.data.values || [];
@@ -73,19 +73,16 @@ async function getNextNumero(sheetName) {
 }
 
 async function addcollection(bot, userId, titre, prix, real, etat, provenance) {
-    const user = await bot.users.fetch(userId);
-    const pseudo = user.globalName || user.username;
-
     const sheetName = `user_${userId}`;
     await getOrCreateUserSheet(sheetName);
     const numero = await getNextNumero(sheetName);
 
     await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A:H`,
+        range: `'${sheetName}'!A:F`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
-            values: [[userId, pseudo, numero, titre, prix, real, etat, provenance]]
+            values: [[numero, titre, real, etat, provenance, prix]]
         }
     });
 }
