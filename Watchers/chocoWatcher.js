@@ -134,9 +134,12 @@ module.exports = async (bot) => {
       await downloadImage(sb.image, filepath);
       const attachment = new AttachmentBuilder(filepath).setName(filename);
       let messageText;
+      let mentionOptions = { roles: [] };
+      
       if (channelId === '1394265558689779813'){
         const roleId = '1391342206849122304'; // ID du rôle à mentionner
         messageText = `${emoji} <@&${roleId}> ${sb.status}\n\n[${sb.title} – ${sb.price}](<${sb.link}>)`;
+        mentionOptions = { roles: [roleId] }; 
       }
       else {
         messageText = `${emoji} ${sb.status}\n\n[${sb.title} – ${sb.price}](<${sb.link}>)`;
@@ -145,7 +148,7 @@ module.exports = async (bot) => {
       await channel.send({
         content: messageText,
         files: [attachment],
-        allowedMentions: { roles: [] },
+        allowedMentions: mentionOptions,
       });
       
     } catch (err) {
