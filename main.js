@@ -71,8 +71,6 @@ bot.on("ready", async () => {
   await zavviWatcherUKPreOrder(bot);
   // Lancer le watcher pour les steelbooks Amazon
   await amazonWatcher(bot);
-  // Lancer le watcher pour SteelbookPro
-  await steelbookProWatcher(bot);
   // Lancer le watcher pour Zavvi FR Pre Order
   await zavviWatcherFRPreOrder(bot);
   // Lancer le watcher pour Choco
@@ -91,7 +89,6 @@ bot.on("ready", async () => {
     zavviWatcherFR(bot);
     zavviWatcherUKPreOrder(bot);
     amazonWatcher(bot);
-    steelbookProWatcher(bot);
     zavviWatcherFRPreOrder(bot);
     chocoWatcher(bot);
     cleanOldCacheEntries(bot); // Nettoyage périodique
