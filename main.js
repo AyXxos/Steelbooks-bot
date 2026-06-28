@@ -63,6 +63,29 @@ bot.on('guildCreate', async (guild) => {
   }
 });
 
+bot.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  if (message.channel.id !== "1520711163204079807") return;
+
+  const hasLink = /https?:\/\/[^\s]+|www\.[^\s]+/gi.test(message.content);
+
+  const hasImage = message.attachments.some(attachment => 
+    attachment.contentType?.startsWith("image/")
+  );
+
+  if (hasLink || hasImage) {
+    try {
+      await message.member.ban({ reason: "SPAM : Bot steelbook" });
+      
+     if (message.deletable) await message.delete();
+
+    } catch (err) {
+      console.error(`Impossible de bannir ${message.author.tag} :`, err);
+    }
+  }
+});
+
 
 bot.on("ready", async () => {
   // Lancer le watcher pour Zavvi FR
