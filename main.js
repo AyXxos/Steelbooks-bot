@@ -16,13 +16,12 @@ const escWatcherPreOrder = require("./Watchers/unused/escWatcherPreOrder.js");
 const chocoWatcher = require("./Watchers/chocoWatcher.js");
 const cleanOldCacheEntries = require("./tools/cleanOldCacheEntries.js");
 
-
 bot.login(config.token);
 loadCommands(bot);
 loadEvents(bot);
 
 bot.on("guildMemberAdd", async (member) => {
-  const roleId = "1391160831638503526"; 
+  const roleId = "1391160831638503526";
   const role = member.guild.roles.cache.get(roleId);
 
   if (!role) {
@@ -45,51 +44,66 @@ bot.on("guildMemberAdd", async (member) => {
     .setTitle("🎉 Bienvenue sur le serveur !")
     .setDescription(`Salut ${member}, ravi de te voir parmi nous !`)
     .addFields(
-      { name: "👥 Membre n°", value: `${member.guild.memberCount}`, inline: true },
-      { name: "📜 Pense à lire :", value: "<#1391168855065231370>", inline: true }
+      {
+        name: "👥 Membre n°",
+        value: `${member.guild.memberCount}`,
+        inline: true,
+      },
+      {
+        name: "📜 Pense à lire :",
+        value: "<#1391168855065231370>",
+        inline: true,
+      },
     )
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-    .setFooter({ text: `${member.guild.name}`, iconURL: member.guild.iconURL({ dynamic: true }) })
+    .setFooter({
+      text: `${member.guild.name}`,
+      iconURL: member.guild.iconURL({ dynamic: true }),
+    })
     .setTimestamp();
 
   await channel.send({ embeds: [embed] });
 });
 
-const allowedGuilds = ['1391151609194479777', '885931233010401290'];
+const allowedGuilds = ["1391151609194479777", "885931233010401290"];
 
-bot.on('guildCreate', async (guild) => {
+bot.on("guildCreate", async (guild) => {
   if (!allowedGuilds.includes(guild.id)) {
     await guild.leave();
   }
 });
 
 bot.on("messageCreate", async (message) => {
+  const logBotChannelId = "1394058036754255932";
+  const logChannel = bot.channels.cache.get(logBotChannelId);
   if (message.author.bot) return;
 
   if (message.channel.id !== "1520711163204079807") return;
 
   const hasLink = /https?:\/\/[^\s]+|www\.[^\s]+/gi.test(message.content);
 
-  const hasImage = message.attachments.some(attachment => 
-    attachment.contentType?.startsWith("image/")
+  const hasImage = message.attachments.some((attachment) =>
+    attachment.contentType?.startsWith("image/"),
   );
 
   if (hasLink || hasImage) {
     try {
       await message.member.ban({ reason: "SPAM : Bot steelbook" });
-      
-     if (message.deletable) await message.delete();
 
+      if (message.deletable) await message.delete();
+      logChannel.send(
+        "❌ Un utilisateur a été banni pour avoir posté un lien ou une image dans le salon #auto-ban : " +
+          message.author.tag,
+      );
     } catch (err) {
       console.error(`Impossible de bannir ${message.author.tag} :`, err);
     }
   }
 });
 
-
 bot.on("ready", async () => {
   // Lancer le watcher pour Zavvi FR
-  await zavviWatcherFR(bot); 
+  await zavviWatcherFR(bot);
   // Lancer le watcher pour les précommandes Zavvi UK
   await zavviWatcherUKPreOrder(bot);
   // Lancer le watcher pour les steelbooks Amazon
@@ -101,20 +115,22 @@ bot.on("ready", async () => {
   // Nettoyage des caches au démarrage
   await cleanOldCacheEntries(bot);
   // Puis répéter toutes les heures
-  setInterval(() => {
-    const logBotChannelId = '1394058036754255932'
-    const logChannel = bot.channels.cache.get(logBotChannelId);
-    logChannel.send("------------------------");
-    const currentTime = new Date();
-    logChannel.send(`Heure actuelle : ${currentTime.toLocaleTimeString()}`);
-    logChannel.send("------------------------");
+  setInterval(
+    () => {
+      const logBotChannelId = "1394058036754255932";
+      const logChannel = bot.channels.cache.get(logBotChannelId);
+      logChannel.send("------------------------");
+      const currentTime = new Date();
+      logChannel.send(`Heure actuelle : ${currentTime.toLocaleTimeString()}`);
+      logChannel.send("------------------------");
 
-    zavviWatcherFR(bot);
-    zavviWatcherUKPreOrder(bot);
-    amazonWatcher(bot);
-    zavviWatcherFRPreOrder(bot);
-    chocoWatcher(bot);
-    cleanOldCacheEntries(bot); // Nettoyage périodique
-  }, 1000 * 60 * 30); // Toutes les 1/2h
+      zavviWatcherFR(bot);
+      zavviWatcherUKPreOrder(bot);
+      amazonWatcher(bot);
+      zavviWatcherFRPreOrder(bot);
+      chocoWatcher(bot);
+      cleanOldCacheEntries(bot); // Nettoyage périodique
+    },
+    1000 * 60 * 30,
+  ); // Toutes les 1/2h
 });
-
